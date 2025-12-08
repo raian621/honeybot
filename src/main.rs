@@ -1,20 +1,7 @@
-use dotenv::dotenv;
-use poise::{
-    Context,
-    serenity_prelude::{self as serenity, Error},
-};
+mod commands;
 
-/// Displays your or another user's account creation date
-#[poise::command(slash_command, prefix_command)]
-async fn age(
-    ctx: Context<'_, (), Error>,
-    #[description = "Selected user"] user: Option<serenity::User>,
-) -> Result<(), Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await?;
-    Ok(())
-}
+use dotenv::dotenv;
+use poise::serenity_prelude::{self as serenity};
 
 #[tokio::main]
 async fn main() {
@@ -25,12 +12,26 @@ async fn main() {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![age()],
+            commands: vec![commands::listen(), commands::unlisten()],
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                match std::env::var("GUILD_ID") {
+                    Ok(guild_id) => {
+                        let guild_id = guild_id.parse().unwrap();
+                        poise::builtins::register_in_guild(
+                            ctx,
+                            &framework.options().commands,
+                            serenity::GuildId::new(guild_id),
+                        )
+                        .await?
+                    }
+                    Err(_) => {
+                        poise::builtins::register_globally(ctx, &framework.options().commands)
+                            .await?
+                    }
+                }
                 Ok(())
             })
         })
