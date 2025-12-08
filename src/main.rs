@@ -1,4 +1,6 @@
 mod commands;
+mod context_data;
+mod event_handler;
 
 use dotenv::dotenv;
 use poise::serenity_prelude::{self as serenity};
@@ -13,6 +15,9 @@ async fn main() {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![commands::listen(), commands::unlisten()],
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler::event_handler(ctx, event, framework, data))
+            },
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
@@ -32,7 +37,7 @@ async fn main() {
                             .await?
                     }
                 }
-                Ok(())
+                Ok(Default::default())
             })
         })
         .build();
