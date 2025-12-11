@@ -1,5 +1,6 @@
 mod commands;
 mod context_data;
+mod datastore;
 mod event_handler;
 
 use dotenv::dotenv;
