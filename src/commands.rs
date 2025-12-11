@@ -5,7 +5,7 @@ use poise::{
 
 use crate::context_data;
 
-#[derive(Debug, poise::ChoiceParameter)]
+#[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
 pub enum ChannelMessageResponse {
     #[name = "ban"]
     Ban,
@@ -13,6 +13,8 @@ pub enum ChannelMessageResponse {
     Kick,
     #[name = "respond"]
     Respond,
+    #[name = "nothing"]
+    Nothing,
 }
 
 #[poise::command(slash_command, default_member_permissions = "ADMINISTRATOR")]
@@ -23,6 +25,11 @@ pub async fn listen(
 ) -> Result<(), Error> {
     let channel_id = channel.id();
     let guild_channel = channel.guild().unwrap();
+    ctx.data()
+        .cache
+        .subscribed_channel_responses
+        .insert((ctx.guild_id().unwrap(), channel_id), response)
+        .await;
     guild_channel.say(ctx, "Listening").await?;
     ctx.send(
         poise::CreateReply::default()
@@ -42,8 +49,11 @@ pub async fn unlisten(
     #[description = "Channel to unlisten to"] channel: serenity::Channel,
 ) -> Result<(), Error> {
     let channel_id = channel.id();
-    let guild_channel = channel.guild().unwrap();
-    guild_channel.say(ctx, "Listening").await?;
+    ctx.data()
+        .cache
+        .subscribed_channel_responses
+        .remove(&(ctx.guild_id().unwrap(), channel_id))
+        .await;
     ctx.send(
         poise::CreateReply::default()
             .content(format!("Unlistening to channel <#{}>", channel_id))

@@ -31,24 +31,27 @@ async fn listen_for_messages(
     let response =
         get_response_for_message(data, new_message.guild_id.unwrap(), new_message.channel_id)
             .await
-            .unwrap();
+            .unwrap_or(ChannelMessageResponse::Nothing);
     match response {
         ChannelMessageResponse::Respond => {
             respond_to_message(ctx, new_message).await?;
         }
+        ChannelMessageResponse::Nothing => (),
         _ => todo!("unimplemented"),
-    }
+    };
 
     Ok(())
 }
 
 async fn get_response_for_message(
-    _data: &context_data::ContextData,
-    _guild_id: serenity::GuildId,
-    _channel_id: serenity::ChannelId,
+    data: &context_data::ContextData,
+    guild_id: serenity::GuildId,
+    channel_id: serenity::ChannelId,
 ) -> Option<ChannelMessageResponse> {
-    // TODO: read channel message response type from ContextData cache or db
-    Some(ChannelMessageResponse::Respond)
+    data.cache
+        .subscribed_channel_responses
+        .get(&(guild_id, channel_id))
+        .await
 }
 
 async fn respond_to_message(
