@@ -6,10 +6,8 @@ pub struct ContextData {
     pub datastore: Arc<Datastore>,
 }
 
-impl Default for ContextData {
-    fn default() -> Self {
-        Self {
-            datastore: Default::default(),
-        }
+impl ContextData {
+    pub fn new(datastore: Arc<Datastore>) -> Self {
+        Self { datastore }
     }
 }

@@ -22,3 +22,5 @@ target
 
 # Generic
 .env
+*.env
+*.db

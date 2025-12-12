@@ -3,13 +3,13 @@ use poise::serenity_prelude::{self as serenity};
 #[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
 pub enum MessageResponse {
     #[name = "ban"]
-    Ban,
+    Ban = 0,
     #[name = "kick"]
-    Kick,
+    Kick = 1,
     #[name = "respond"]
-    Respond,
+    Respond = 2,
     #[name = "nothing"]
-    Nothing,
+    Nothing = 3,
 }
 
 pub struct MessageResponseConfig {

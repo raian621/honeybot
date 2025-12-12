@@ -3,16 +3,43 @@ mod context_data;
 mod datastore;
 mod event_handler;
 
+use clap::Parser;
+use std::sync::Arc;
+
 use dotenv::dotenv;
 use poise::serenity_prelude::{self as serenity};
 
+use crate::{
+    context_data::ContextData,
+    datastore::{Datastore, database::Database},
+};
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to sqlite db file
+    #[arg(short, long)]
+    db_path: Option<String>,
+
+    /// Path to migrations directory
+    #[arg(short, long)]
+    migrations_path: Option<String>,
+}
+
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
+
     dotenv().ok();
 
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
     let intents = serenity::GatewayIntents::non_privileged();
 
+    let database = Database::new(&args.db_path.unwrap_or("honeybot.db".to_string())).await;
+    database
+        .apply_migrations(args.migrations_path.unwrap_or("./migrations".to_string()))
+        .await;
+    let datastore = Arc::new(Datastore::new(Default::default(), database));
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![commands::listen(), commands::unlisten()],
@@ -38,7 +65,7 @@ async fn main() {
                             .await?
                     }
                 }
-                Ok(Default::default())
+                Ok(ContextData::new(datastore.clone()))
             })
         })
         .build();

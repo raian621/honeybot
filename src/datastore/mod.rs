@@ -1,11 +1,14 @@
 use poise::serenity_prelude::{self as serenity};
 
 use crate::datastore::{
+    cache::DatabaseCache,
+    database::Database,
     models::{MessageResponse, MessageResponseConfig},
     traits::{DatastoreReader, DatastoreWriter},
 };
 
-mod cache;
+pub mod cache;
+pub mod database;
 pub mod models;
 pub mod traits;
 
@@ -15,6 +18,7 @@ pub mod prelude {
 
 pub struct Datastore {
     cache: cache::DatabaseCache,
+    database: database::Database,
 }
 
 impl DatastoreReader for Datastore {
@@ -23,7 +27,25 @@ impl DatastoreReader for Datastore {
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
     ) -> Option<MessageResponse> {
-        self.cache.get_message_response(guild_id, channel_id).await
+        match self.cache.get_message_response(guild_id, channel_id).await {
+            Some(response) => Some(response),
+            None => {
+                let response = self
+                    .database
+                    .get_message_response(guild_id, channel_id)
+                    .await;
+                if let Some(response) = response {
+                    self.cache
+                        .insert_message_response_config(&MessageResponseConfig {
+                            guild_id,
+                            channel_id,
+                            response,
+                        })
+                        .await;
+                }
+                response
+            }
+        }
     }
 }
 
@@ -48,10 +70,8 @@ impl DatastoreWriter for Datastore {
     }
 }
 
-impl Default for Datastore {
-    fn default() -> Self {
-        Self {
-            cache: Default::default(),
-        }
+impl Datastore {
+    pub fn new(cache: DatabaseCache, database: Database) -> Self {
+        Self { cache, database }
     }
 }
