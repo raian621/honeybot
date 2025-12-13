@@ -90,22 +90,9 @@ impl Database {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use crate::datastore::test_utils::{delete_test_db, get_test_db};
 
     use super::*;
-
-    const TEST_DB_PATH: &str = "/tmp/honeybot.db";
-
-    async fn get_test_db() -> Database {
-        let db = Database::new(TEST_DB_PATH).await;
-        db.apply_migrations("migrations".to_string()).await;
-        db
-    }
-
-    async fn delete_test_db(db: Database) {
-        drop(db);
-        fs::remove_file(TEST_DB_PATH).unwrap();
-    }
 
     #[tokio::test]
     async fn create_read_and_delete_message_response_config() {
