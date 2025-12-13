@@ -1,6 +1,6 @@
 use poise::serenity_prelude::{self as serenity};
 
-#[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
+#[derive(Debug, Clone, Copy, PartialEq, poise::ChoiceParameter)]
 pub enum MessageResponse {
     #[name = "ban"]
     Ban = 0,

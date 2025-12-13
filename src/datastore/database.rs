@@ -87,3 +87,57 @@ impl Database {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    const TEST_DB_PATH: &str = "/tmp/honeybot.db";
+
+    async fn get_test_db() -> Database {
+        let db = Database::new(TEST_DB_PATH).await;
+        db.apply_migrations("migrations".to_string()).await;
+        db
+    }
+
+    async fn delete_test_db(db: Database) {
+        drop(db);
+        fs::remove_file(TEST_DB_PATH).unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_read_and_delete_message_response_config() {
+        let db = get_test_db().await;
+
+        // Create the message response configuration in db
+        let message_response = MessageResponseConfig {
+            guild_id: serenity::GuildId::new(12345678),
+            channel_id: serenity::ChannelId::new(87654321),
+            response: MessageResponse::Ban,
+        };
+        let opt = db.insert_message_response_config(&message_response).await;
+        assert_eq!(opt, Some(()));
+
+        // Read the message response for guild and channel id
+        let opt = db
+            .get_message_response(message_response.guild_id, message_response.channel_id)
+            .await;
+        assert_eq!(opt, Some(message_response.response));
+
+        // Delete the message response config
+        let opt = db
+            .delete_message_response_config(message_response.guild_id, message_response.channel_id)
+            .await;
+        assert_eq!(opt, Some(()));
+
+        // Message response config should be deleted
+        let opt = db
+            .get_message_response(message_response.guild_id, message_response.channel_id)
+            .await;
+        assert_eq!(opt, None);
+
+        delete_test_db(db).await;
+    }
+}
