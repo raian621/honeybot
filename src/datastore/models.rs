@@ -12,6 +12,23 @@ pub enum MessageResponse {
     Nothing = 3,
 }
 
+impl From<usize> for MessageResponse {
+    fn from(value: usize) -> Self {
+        const BAN: usize = MessageResponse::Ban as usize;
+        const KICK: usize = MessageResponse::Kick as usize;
+        const RESPONSE: usize = MessageResponse::Respond as usize;
+        const NOTHING: usize = MessageResponse::Nothing as usize;
+
+        match value {
+            BAN => MessageResponse::Ban,
+            KICK => MessageResponse::Kick,
+            RESPONSE => MessageResponse::Respond,
+            NOTHING => MessageResponse::Nothing,
+            _ => panic!("invalid integer enum conversion"),
+        }
+    }
+}
+
 pub struct MessageResponseConfig {
     pub guild_id: serenity::GuildId,
     pub channel_id: serenity::ChannelId,

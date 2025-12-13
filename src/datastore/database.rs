@@ -3,7 +3,10 @@ use std::path::Path;
 use poise::serenity_prelude as serenity;
 use sqlx::{Sqlite, migrate::Migrator, sqlite::SqliteConnectOptions};
 
-use crate::datastore::{models::MessageResponse, traits::DatastoreReader};
+use crate::datastore::{
+    models::{MessageResponse, MessageResponseConfig},
+    traits::{DatastoreReader, DatastoreWriter},
+};
 
 pub struct Database {
     pool: sqlx::Pool<Sqlite>,
@@ -12,10 +15,53 @@ pub struct Database {
 impl DatastoreReader for Database {
     async fn get_message_response(
         &self,
-        _guild_id: serenity::GuildId,
-        _channel_id: serenity::ChannelId,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
     ) -> Option<MessageResponse> {
-        todo!();
+        let response: Option<i64> = sqlx::query_scalar(
+            "SELECT response FROM message_responses WHERE guild_id = ? AND channel_id = ?",
+        )
+        .bind(guild_id.get() as i64)
+        .bind(channel_id.get() as i64)
+        .fetch_one(&self.pool)
+        .await
+        .ok();
+        if let Some(response) = response {
+            Some(MessageResponse::from(response as usize))
+        } else {
+            None
+        }
+    }
+}
+
+impl DatastoreWriter for Database {
+    async fn delete_message_response_config(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Option<()> {
+        let result =
+            sqlx::query("DELETE FROM message_responses WHERE guild_id = ? AND channel_id = ?")
+                .bind(guild_id.get() as i64)
+                .bind(channel_id.get() as i64)
+                .execute(&self.pool)
+                .await;
+        if result.is_err() { None } else { Some(()) }
+    }
+
+    async fn insert_message_response_config(
+        &self,
+        message_response_config: &MessageResponseConfig,
+    ) -> Option<()> {
+        let result = sqlx::query(
+            "INSERT INTO message_responses (guild_id, channel_id, response) VALUES (?, ?, ?)",
+        )
+        .bind(message_response_config.guild_id.get() as i64)
+        .bind(message_response_config.channel_id.get() as i64)
+        .bind(message_response_config.response as i64)
+        .execute(&self.pool)
+        .await;
+        if result.is_err() { None } else { Some(()) }
     }
 }
 
