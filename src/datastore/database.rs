@@ -4,6 +4,7 @@ use poise::serenity_prelude as serenity;
 use sqlx::{Sqlite, migrate::Migrator, sqlite::SqliteConnectOptions};
 
 use crate::datastore::{
+    errors::Error,
     models::{MessageResponse, MessageResponseConfig},
     traits::{DatastoreReader, DatastoreWriter},
 };
@@ -17,16 +18,17 @@ impl DatastoreReader for Database {
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<MessageResponse> {
-        let response: Option<i64> = sqlx::query_scalar(
+    ) -> Result<MessageResponse, Error> {
+        let response: Result<i64, sqlx::Error> = sqlx::query_scalar(
             "SELECT response FROM message_responses WHERE guild_id = ? AND channel_id = ?",
         )
         .bind(guild_id.get() as i64)
         .bind(channel_id.get() as i64)
         .fetch_one(&self.pool)
-        .await
-        .ok();
-        response.map(MessageResponse::from)
+        .await;
+        response
+            .map(MessageResponse::from)
+            .or(Err(Error::DatabaseEntryNotFound))
     }
 }
 
@@ -35,20 +37,20 @@ impl DatastoreWriter for Database {
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<()> {
+    ) -> Result<(), Error> {
         let result =
             sqlx::query("DELETE FROM message_responses WHERE guild_id = ? AND channel_id = ?")
                 .bind(guild_id.get() as i64)
                 .bind(channel_id.get() as i64)
                 .execute(&self.pool)
                 .await;
-        if result.is_err() { None } else { Some(()) }
+        result.map(|_| ()).or(Err(Error::DatabaseEntryNotFound))
     }
 
     async fn insert_message_response_config(
         &self,
         message_response_config: &MessageResponseConfig,
-    ) -> Option<()> {
+    ) -> Result<(), Error> {
         let result = sqlx::query(
             "INSERT INTO message_responses (guild_id, channel_id, response) VALUES (?, ?, ?)",
         )
@@ -57,7 +59,22 @@ impl DatastoreWriter for Database {
         .bind(message_response_config.response as i64)
         .execute(&self.pool)
         .await;
-        if result.is_err() { None } else { Some(()) }
+        if result.is_ok() {
+            return Ok(());
+        }
+        let result = sqlx::query(
+            "UPDATE message_responses SET response = ? WHERE guild_id = ? AND channel_id = ?",
+        )
+        .bind(message_response_config.response as i64)
+        .bind(message_response_config.guild_id.get() as i64)
+        .bind(message_response_config.channel_id.get() as i64)
+        .execute(&self.pool)
+        .await;
+        if result.is_err() {
+            return Err(Error::DatabaseUnexpectedErr);
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -100,26 +117,26 @@ mod tests {
             channel_id: serenity::ChannelId::from(87654321),
             response: MessageResponse::Ban,
         };
-        let opt = db.insert_message_response_config(&message_response).await;
-        assert_eq!(opt, Some(()));
+        let result = db.insert_message_response_config(&message_response).await;
+        assert_eq!(result, Ok(()));
 
         // Read the message response for guild and channel id
-        let opt = db
+        let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, Some(message_response.response));
+        assert_eq!(result, Ok(message_response.response));
 
         // Delete the message response config
-        let opt = db
+        let result = db
             .delete_message_response_config(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, Some(()));
+        assert_eq!(result, Ok(()));
 
         // Message response config should be deleted
-        let opt = db
+        let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, None);
+        assert_eq!(result, Err(Error::DatabaseEntryNotFound));
 
         delete_test_db(db).await;
     }

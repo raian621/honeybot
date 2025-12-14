@@ -2,6 +2,7 @@ use moka::future::Cache;
 use poise::serenity_prelude::{self as serenity};
 
 use crate::datastore::{
+    errors::Error,
     models::{MessageResponse, MessageResponseConfig},
     traits::{DatastoreReader, DatastoreWriter},
 };
@@ -23,10 +24,15 @@ impl DatastoreReader for DatabaseCache {
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<MessageResponse> {
-        self.subscribed_channel_responses
+    ) -> Result<MessageResponse, Error> {
+        match self
+            .subscribed_channel_responses
             .get(&(guild_id, channel_id))
             .await
+        {
+            Some(response) => Ok(response),
+            None => Err(Error::CacheEntryNotFound),
+        }
     }
 }
 
@@ -34,7 +40,7 @@ impl DatastoreWriter for DatabaseCache {
     async fn insert_message_response_config(
         &self,
         message_response_config: &MessageResponseConfig,
-    ) -> Option<()> {
+    ) -> Result<(), Error> {
         self.subscribed_channel_responses
             .insert(
                 (
@@ -44,23 +50,17 @@ impl DatastoreWriter for DatabaseCache {
                 message_response_config.response,
             )
             .await;
-        Some(())
+        Ok(())
     }
 
     async fn delete_message_response_config(
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<()> {
-        if self
-            .subscribed_channel_responses
+    ) -> Result<(), Error> {
+        self.subscribed_channel_responses
             .remove(&(guild_id, channel_id))
-            .await
-            .is_none()
-        {
-            None
-        } else {
-            Some(())
-        }
+            .await;
+        Ok(())
     }
 }

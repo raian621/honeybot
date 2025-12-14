@@ -31,6 +31,7 @@ async fn main() {
     let args = Args::parse();
 
     dotenv().ok();
+    tracing_subscriber::fmt::init();
 
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
     let intents = serenity::GatewayIntents::non_privileged();

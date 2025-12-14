@@ -2,6 +2,7 @@ use poise::{
     Context,
     serenity_prelude::{self as serenity, Error},
 };
+use tracing::{Level, event};
 
 use crate::{
     context_data,
@@ -19,24 +20,37 @@ pub async fn listen(
 ) -> Result<(), Error> {
     let channel_id = channel.id();
     let guild_channel = channel.guild().unwrap();
-    ctx.data()
+    match ctx
+        .data()
         .datastore
         .insert_message_response_config(&MessageResponseConfig {
             guild_id: ctx.guild_id().unwrap(),
             channel_id,
             response,
         })
-        .await;
-    guild_channel.say(ctx, "Listening").await?;
-    ctx.send(
-        poise::CreateReply::default()
-            .content(format!(
-                "Listening to channel <#{}>, prepared to take action `{:?}`",
-                channel_id, response
-            ))
-            .ephemeral(true),
-    )
-    .await?;
+        .await
+    {
+        Ok(_) => {
+            guild_channel.say(ctx, "Listening").await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!(
+                        "Listening to channel <#{channel_id}>, prepared to take action `{response:?}`"
+                    ))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+        Err(why) => {
+            event!(Level::WARN, "Error listening to channel: {why:?}");
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("Error listening to channel >#{channel_id}>"))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+    }
     Ok(())
 }
 
@@ -46,15 +60,29 @@ pub async fn unlisten(
     #[description = "Channel to unlisten to"] channel: serenity::Channel,
 ) -> Result<(), Error> {
     let channel_id = channel.id();
-    ctx.data()
+    let result = ctx
+        .data()
         .datastore
         .delete_message_response_config(ctx.guild_id().unwrap(), channel_id)
         .await;
-    ctx.send(
-        poise::CreateReply::default()
-            .content(format!("Unlistening to channel <#{}>", channel_id))
-            .ephemeral(true),
-    )
-    .await?;
+    match result {
+        Ok(_) => {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("Unlistening to channel <#{channel_id}>"))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+        Err(why) => {
+            event!(Level::WARN, "Error unlistening to channel: {why:?}");
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("Error unlistening to channel >#{channel_id}>"))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+    }
     Ok(())
 }

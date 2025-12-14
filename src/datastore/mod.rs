@@ -3,12 +3,14 @@ use poise::serenity_prelude::{self as serenity};
 use crate::datastore::{
     cache::DatabaseCache,
     database::Database,
+    errors::Error,
     models::{MessageResponse, MessageResponseConfig},
     traits::{DatastoreReader, DatastoreWriter},
 };
 
 pub mod cache;
 pub mod database;
+pub mod errors;
 pub mod models;
 pub mod traits;
 
@@ -29,30 +31,30 @@ impl DatastoreReader for Datastore {
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<MessageResponse> {
-        let response = self.cache.get_message_response(guild_id, channel_id).await;
-        if response.is_some() {
-            return response;
+    ) -> Result<MessageResponse, Error> {
+        // Return cached value if it's found
+        let result = self.cache.get_message_response(guild_id, channel_id).await;
+        if result.is_ok() {
+            return result;
         }
+
+        // Read from database after cache miss
         let response = self
             .database
             .get_message_response(guild_id, channel_id)
-            .await;
-        if response.is_none() {
-            return response;
-        }
-        match self
-            .database
+            .await?;
+
+        // Ignore cache insertion errors
+        let _ = self
+            .cache
             .insert_message_response_config(&MessageResponseConfig {
                 guild_id,
                 channel_id,
-                response: response.unwrap(),
+                response,
             })
-            .await
-        {
-            Some(_) => response,
-            None => None,
-        }
+            .await;
+
+        Ok(response)
     }
 }
 
@@ -60,39 +62,26 @@ impl DatastoreWriter for Datastore {
     async fn insert_message_response_config(
         &self,
         message_response_config: &MessageResponseConfig,
-    ) -> Option<()> {
-        match self
-            .database
+    ) -> Result<(), Error> {
+        self.database
+            .insert_message_response_config(message_response_config)
+            .await?;
+        self.cache
             .insert_message_response_config(message_response_config)
             .await
-        {
-            None => None,
-            Some(_) => {
-                // Only write to cache if db write was successful
-                self.cache
-                    .insert_message_response_config(message_response_config)
-                    .await
-            }
-        }
     }
 
     async fn delete_message_response_config(
         &self,
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
-    ) -> Option<()> {
-        match self
-            .database
+    ) -> Result<(), Error> {
+        self.database
+            .delete_message_response_config(guild_id, channel_id)
+            .await?;
+        self.cache
             .delete_message_response_config(guild_id, channel_id)
             .await
-        {
-            None => None,
-            Some(_) => {
-                self.cache
-                    .delete_message_response_config(guild_id, channel_id)
-                    .await
-            }
-        }
     }
 }
 
@@ -118,27 +107,27 @@ mod tests {
             channel_id: serenity::ChannelId::from(87654321),
             response: MessageResponse::Ban,
         };
-        let opt = db.insert_message_response_config(&message_response).await;
-        assert_eq!(opt, Some(()));
+        let result = db.insert_message_response_config(&message_response).await;
+        assert_eq!(result, Ok(()));
 
         // Read the message response for guild and channel id
-        let opt = db
+        let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, Some(message_response.response));
+        assert_eq!(result, Ok(message_response.response));
 
         // Delete the message response config
-        let opt = db
+        let result = db
             .delete_message_response_config(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, Some(()));
+        assert_eq!(result, Ok(()));
 
         // Message response config should be deleted
 
-        let opt = db
+        let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(opt, None);
+        assert_eq!(result, Err(Error::DatabaseEntryNotFound));
 
         delete_test_db(db).await;
     }

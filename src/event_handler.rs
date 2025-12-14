@@ -39,8 +39,6 @@ async fn listen_for_messages(
         .await
         .unwrap_or(MessageResponse::Nothing);
 
-    println!("{response:?} {channel_id} {guild_id}");
-
     // I feel like this is not the best way to get the guild...
     let guild = (*new_message.guild(&ctx.cache).unwrap()).clone();
 
@@ -52,12 +50,17 @@ async fn listen_for_messages(
         }
         MessageResponse::Kick => {
             guild
-                .kick_with_reason(ctx, new_message.author.id, "")
+                .kick_with_reason(ctx, new_message.author.id, "posted in a honeypot channel")
                 .await?
         }
         MessageResponse::Ban => {
             guild
-                .ban_with_reason(ctx, new_message.author.id, 7, "")
+                .ban_with_reason(
+                    ctx,
+                    new_message.author.id,
+                    7,
+                    "posted in a honeypot channel",
+                )
                 .await?
         }
         MessageResponse::Nothing => (),
