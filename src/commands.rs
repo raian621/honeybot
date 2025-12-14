@@ -31,7 +31,20 @@ pub async fn listen(
         .await
     {
         Ok(_) => {
-            guild_channel.say(ctx, "Listening").await?;
+            guild_channel
+                .say(
+                    ctx,
+                    format!(
+                        "**Do not** post in this channel unless you want to be {}",
+                        match response {
+                            MessageResponse::Ban => "banned",
+                            MessageResponse::Kick => "kicked",
+                            MessageResponse::Respond => "mocked",
+                            MessageResponse::Nothing => "ignored",
+                        },
+                    ),
+                )
+                .await?;
             ctx.send(
                 poise::CreateReply::default()
                     .content(format!(
