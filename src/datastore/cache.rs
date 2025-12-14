@@ -7,7 +7,7 @@ use crate::datastore::{
 };
 
 pub struct DatabaseCache {
-    subscribed_channel_responses: Cache<(i64, i64), MessageResponse>,
+    subscribed_channel_responses: Cache<(serenity::GuildId, serenity::ChannelId), MessageResponse>,
 }
 
 impl Default for DatabaseCache {
@@ -21,8 +21,8 @@ impl Default for DatabaseCache {
 impl DatastoreReader for DatabaseCache {
     async fn get_message_response(
         &self,
-        guild_id: i64,
-        channel_id: i64,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
     ) -> Option<MessageResponse> {
         self.subscribed_channel_responses
             .get(&(guild_id, channel_id))
@@ -48,7 +48,11 @@ impl DatastoreWriter for DatabaseCache {
         )
     }
 
-    async fn delete_message_response_config(&self, guild_id: i64, channel_id: i64) -> Option<()> {
+    async fn delete_message_response_config(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Option<()> {
         if self
             .subscribed_channel_responses
             .remove(&(guild_id, channel_id))

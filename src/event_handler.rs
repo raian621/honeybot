@@ -31,8 +31,8 @@ async fn listen_for_messages(
         return Ok(());
     }
 
-    let guild_id = new_message.guild_id.unwrap().get() as i64;
-    let channel_id = new_message.channel_id.get() as i64;
+    let guild_id = new_message.guild_id.unwrap();
+    let channel_id = new_message.channel_id;
     let response = data
         .datastore
         .get_message_response(guild_id, channel_id)

@@ -1,55 +1,36 @@
 use poise::serenity_prelude::{self as serenity};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MessageResponse {
-    Ban = 0,
-    Kick = 1,
-    Respond = 2,
-    Nothing = 3,
-}
-
-impl From<usize> for MessageResponse {
-    fn from(value: usize) -> Self {
-        const BAN: usize = MessageResponse::Ban as usize;
-        const KICK: usize = MessageResponse::Kick as usize;
-        const RESPONSE: usize = MessageResponse::Respond as usize;
-        const NOTHING: usize = MessageResponse::Nothing as usize;
-
-        match value {
-            BAN => MessageResponse::Ban,
-            KICK => MessageResponse::Kick,
-            RESPONSE => MessageResponse::Respond,
-            NOTHING => MessageResponse::Nothing,
-            _ => panic!("invalid integer enum conversion"),
-        }
-    }
-}
+const BAN: isize = 0;
+const KICK: isize = 1;
+const RESPOND: isize = 2;
+const NOTHING: isize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, poise::ChoiceParameter)]
-pub enum DiscordMessageResponse {
+pub enum MessageResponse {
     #[name = "ban"]
-    Ban,
+    Ban = BAN,
     #[name = "kick"]
-    Kick,
+    Kick = KICK,
     #[name = "respond"]
-    Respond,
+    Respond = RESPOND,
     #[name = "nothing"]
-    Nothing,
+    Nothing = NOTHING,
 }
 
-impl Into<MessageResponse> for DiscordMessageResponse {
-    fn into(self) -> MessageResponse {
-        match self {
-            DiscordMessageResponse::Ban => MessageResponse::Ban,
-            DiscordMessageResponse::Kick => MessageResponse::Kick,
-            DiscordMessageResponse::Respond => MessageResponse::Respond,
-            DiscordMessageResponse::Nothing => MessageResponse::Nothing,
+impl From<i64> for MessageResponse {
+    fn from(value: i64) -> Self {
+        match value as isize {
+            BAN => MessageResponse::Ban,
+            KICK => MessageResponse::Kick,
+            RESPOND => MessageResponse::Respond,
+            NOTHING => MessageResponse::Nothing,
+            _ => panic!("invalid message response"),
         }
     }
 }
 
 pub struct MessageResponseConfig {
-    pub guild_id: i64,
-    pub channel_id: i64,
+    pub guild_id: serenity::GuildId,
+    pub channel_id: serenity::ChannelId,
     pub response: MessageResponse,
 }

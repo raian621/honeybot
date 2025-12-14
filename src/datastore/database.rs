@@ -15,19 +15,19 @@ pub struct Database {
 impl DatastoreReader for Database {
     async fn get_message_response(
         &self,
-        guild_id: i64,
-        channel_id: i64,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
     ) -> Option<MessageResponse> {
         let response: Option<i64> = sqlx::query_scalar(
             "SELECT response FROM message_responses WHERE guild_id = ? AND channel_id = ?",
         )
-        .bind(guild_id)
-        .bind(channel_id)
+        .bind(guild_id.get() as i64)
+        .bind(channel_id.get() as i64)
         .fetch_one(&self.pool)
         .await
         .ok();
         if let Some(response) = response {
-            Some(MessageResponse::from(response as usize))
+            Some(MessageResponse::from(response))
         } else {
             None
         }
@@ -35,11 +35,15 @@ impl DatastoreReader for Database {
 }
 
 impl DatastoreWriter for Database {
-    async fn delete_message_response_config(&self, guild_id: i64, channel_id: i64) -> Option<()> {
+    async fn delete_message_response_config(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Option<()> {
         let result =
             sqlx::query("DELETE FROM message_responses WHERE guild_id = ? AND channel_id = ?")
-                .bind(guild_id)
-                .bind(channel_id)
+                .bind(guild_id.get() as i64)
+                .bind(channel_id.get() as i64)
                 .execute(&self.pool)
                 .await;
         if result.is_err() { None } else { Some(()) }
@@ -52,8 +56,8 @@ impl DatastoreWriter for Database {
         let result = sqlx::query(
             "INSERT INTO message_responses (guild_id, channel_id, response) VALUES (?, ?, ?)",
         )
-        .bind(message_response_config.guild_id)
-        .bind(message_response_config.channel_id)
+        .bind(message_response_config.guild_id.get() as i64)
+        .bind(message_response_config.channel_id.get() as i64)
         .bind(message_response_config.response as i64)
         .execute(&self.pool)
         .await;
@@ -96,8 +100,8 @@ mod tests {
 
         // Create the message response configuration in db
         let message_response = MessageResponseConfig {
-            guild_id: 12345678,
-            channel_id: 87654321,
+            guild_id: serenity::GuildId::from(12345678),
+            channel_id: serenity::ChannelId::from(87654321),
             response: MessageResponse::Ban,
         };
         let opt = db.insert_message_response_config(&message_response).await;
