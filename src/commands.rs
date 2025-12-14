@@ -6,7 +6,7 @@ use poise::{
 use crate::{
     context_data,
     datastore::{
-        models::{MessageResponse, MessageResponseConfig},
+        models::{DiscordMessageResponse, MessageResponse, MessageResponseConfig},
         prelude::*,
     },
 };
@@ -15,16 +15,16 @@ use crate::{
 pub async fn listen(
     ctx: Context<'_, context_data::ContextData, Error>,
     #[description = "Channel to listen to"] channel: serenity::Channel,
-    #[description = "Action for each new message in channel"] response: MessageResponse,
+    #[description = "Action for each new message in channel"] response: DiscordMessageResponse,
 ) -> Result<(), Error> {
     let channel_id = channel.id();
     let guild_channel = channel.guild().unwrap();
     ctx.data()
         .datastore
         .insert_message_response_config(&MessageResponseConfig {
-            guild_id: ctx.guild_id().unwrap(),
-            channel_id: channel_id,
-            response: response,
+            guild_id: ctx.guild_id().unwrap().get() as i64,
+            channel_id: channel_id.get() as i64,
+            response: response.into(),
         })
         .await;
     guild_channel.say(ctx, "Listening").await?;
@@ -48,7 +48,10 @@ pub async fn unlisten(
     let channel_id = channel.id();
     ctx.data()
         .datastore
-        .delete_message_response_config(ctx.guild_id().unwrap(), channel_id)
+        .delete_message_response_config(
+            ctx.guild_id().unwrap().get() as i64,
+            channel_id.get() as i64,
+        )
         .await;
     ctx.send(
         poise::CreateReply::default()

@@ -1,14 +1,10 @@
 use poise::serenity_prelude::{self as serenity};
 
-#[derive(Debug, Clone, Copy, PartialEq, poise::ChoiceParameter)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MessageResponse {
-    #[name = "ban"]
     Ban = 0,
-    #[name = "kick"]
     Kick = 1,
-    #[name = "respond"]
     Respond = 2,
-    #[name = "nothing"]
     Nothing = 3,
 }
 
@@ -29,8 +25,31 @@ impl From<usize> for MessageResponse {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, poise::ChoiceParameter)]
+pub enum DiscordMessageResponse {
+    #[name = "ban"]
+    Ban,
+    #[name = "kick"]
+    Kick,
+    #[name = "respond"]
+    Respond,
+    #[name = "nothing"]
+    Nothing,
+}
+
+impl Into<MessageResponse> for DiscordMessageResponse {
+    fn into(self) -> MessageResponse {
+        match self {
+            DiscordMessageResponse::Ban => MessageResponse::Ban,
+            DiscordMessageResponse::Kick => MessageResponse::Kick,
+            DiscordMessageResponse::Respond => MessageResponse::Respond,
+            DiscordMessageResponse::Nothing => MessageResponse::Nothing,
+        }
+    }
+}
+
 pub struct MessageResponseConfig {
-    pub guild_id: serenity::GuildId,
-    pub channel_id: serenity::ChannelId,
+    pub guild_id: i64,
+    pub channel_id: i64,
     pub response: MessageResponse,
 }

@@ -27,8 +27,8 @@ pub struct Datastore {
 impl DatastoreReader for Datastore {
     async fn get_message_response(
         &self,
-        guild_id: serenity::GuildId,
-        channel_id: serenity::ChannelId,
+        guild_id: i64,
+        channel_id: i64,
     ) -> Option<MessageResponse> {
         let response = self.cache.get_message_response(guild_id, channel_id).await;
         if response.is_some() {
@@ -76,11 +76,7 @@ impl DatastoreWriter for Datastore {
         }
     }
 
-    async fn delete_message_response_config(
-        &self,
-        guild_id: serenity::GuildId,
-        channel_id: serenity::ChannelId,
-    ) -> Option<()> {
+    async fn delete_message_response_config(&self, guild_id: i64, channel_id: i64) -> Option<()> {
         match self
             .database
             .delete_message_response_config(guild_id, channel_id)
@@ -114,8 +110,8 @@ mod tests {
 
         // Create the message response configuration in db
         let message_response = MessageResponseConfig {
-            guild_id: serenity::GuildId::new(12345678),
-            channel_id: serenity::ChannelId::new(87654321),
+            guild_id: 12345678,
+            channel_id: 87654321,
             response: MessageResponse::Ban,
         };
         let opt = db.insert_message_response_config(&message_response).await;
@@ -134,6 +130,7 @@ mod tests {
         assert_eq!(opt, Some(()));
 
         // Message response config should be deleted
+
         let opt = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
