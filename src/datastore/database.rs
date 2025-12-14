@@ -71,7 +71,7 @@ impl DatastoreWriter for Database {
         .execute(&self.pool)
         .await;
         if result.is_err() {
-            return Err(Error::DatabaseUnexpectedErr);
+            Err(Error::DatabaseUnexpectedErr)
         } else {
             Ok(())
         }
