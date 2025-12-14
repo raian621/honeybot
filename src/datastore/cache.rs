@@ -35,17 +35,16 @@ impl DatastoreWriter for DatabaseCache {
         &self,
         message_response_config: &MessageResponseConfig,
     ) -> Option<()> {
-        Some(
-            self.subscribed_channel_responses
-                .insert(
-                    (
-                        message_response_config.guild_id,
-                        message_response_config.channel_id,
-                    ),
-                    message_response_config.response,
-                )
-                .await,
-        )
+        self.subscribed_channel_responses
+            .insert(
+                (
+                    message_response_config.guild_id,
+                    message_response_config.channel_id,
+                ),
+                message_response_config.response,
+            )
+            .await;
+        Some(())
     }
 
     async fn delete_message_response_config(

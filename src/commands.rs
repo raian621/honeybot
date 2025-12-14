@@ -23,8 +23,8 @@ pub async fn listen(
         .datastore
         .insert_message_response_config(&MessageResponseConfig {
             guild_id: ctx.guild_id().unwrap(),
-            channel_id: channel_id,
-            response: response.into(),
+            channel_id,
+            response,
         })
         .await;
     guild_channel.say(ctx, "Listening").await?;

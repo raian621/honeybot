@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{self as serenity, Error, Message};
+use poise::serenity_prelude::{self as serenity, Error};
 
 use crate::{
     context_data,

@@ -26,11 +26,7 @@ impl DatastoreReader for Database {
         .fetch_one(&self.pool)
         .await
         .ok();
-        if let Some(response) = response {
-            Some(MessageResponse::from(response))
-        } else {
-            None
-        }
+        response.map(MessageResponse::from)
     }
 }
 
