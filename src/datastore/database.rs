@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 use sqlx::{Sqlite, migrate::Migrator, sqlite::SqliteConnectOptions};
 
 use crate::datastore::{
@@ -26,9 +26,11 @@ impl DatastoreReader for Database {
         .bind(channel_id.get() as i64)
         .fetch_one(&self.pool)
         .await;
-        response
-            .map(MessageResponse::from)
-            .or(Err(Error::DatabaseEntryNotFound))
+        match response {
+            Err(sqlx::Error::RowNotFound) => Err(Error::DatabaseEntryNotFound),
+            Err(why) => Err(Error::DatabaseUnexpectedErr(format!("{why:?}"))),
+            Ok(response) => Ok(MessageResponse::from(response)),
+        }
     }
 }
 
@@ -70,10 +72,9 @@ impl DatastoreWriter for Database {
         .bind(message_response_config.channel_id.get() as i64)
         .execute(&self.pool)
         .await;
-        if result.is_err() {
-            Err(Error::DatabaseUnexpectedErr)
-        } else {
-            Ok(())
+        match result {
+            Err(why) => Err(Error::DatabaseUnexpectedErr(format!("{why:?}"))),
+            Ok(_) => Ok(()),
         }
     }
 }
@@ -103,18 +104,24 @@ impl Database {
 
 #[cfg(test)]
 mod tests {
-    use crate::datastore::test_utils::{delete_test_db, get_test_db};
+    use serial_test::serial;
+
+    use crate::datastore::test_utils::get_test_db;
 
     use super::*;
 
     #[tokio::test]
+    #[serial]
     async fn create_read_and_delete_message_response_config() {
         let db = get_test_db().await;
 
+        let guild_id = 12345678;
+        let channel_id = 87654321;
+
         // Create the message response configuration in db
         let message_response = MessageResponseConfig {
-            guild_id: serenity::GuildId::from(12345678),
-            channel_id: serenity::ChannelId::from(87654321),
+            guild_id: serenity::GuildId::from(guild_id),
+            channel_id: serenity::ChannelId::from(channel_id),
             response: MessageResponse::Ban,
         };
         let result = db.insert_message_response_config(&message_response).await;
@@ -138,6 +145,12 @@ mod tests {
             .await;
         assert_eq!(result, Err(Error::DatabaseEntryNotFound));
 
-        delete_test_db(db).await;
+        // Clean up rows:
+        db.delete_message_response_config(
+            serenity::GuildId::from(guild_id),
+            serenity::ChannelId::from(channel_id),
+        )
+        .await
+        .unwrap();
     }
 }

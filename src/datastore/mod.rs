@@ -93,18 +93,23 @@ impl Datastore {
 
 #[cfg(test)]
 mod tests {
-    use crate::datastore::test_utils::{delete_test_db, get_test_db};
+    use serial_test::serial;
+
+    use crate::datastore::test_utils::get_test_db;
 
     use super::*;
 
     #[tokio::test]
+    #[serial]
     async fn create_read_and_delete_message_response_config() {
         let db = get_test_db().await;
+        let guild_id = 12345678;
+        let channel_id = 87654321;
 
         // Create the message response configuration in db
         let message_response = MessageResponseConfig {
-            guild_id: serenity::GuildId::from(12345678),
-            channel_id: serenity::ChannelId::from(87654321),
+            guild_id: serenity::GuildId::from(guild_id),
+            channel_id: serenity::ChannelId::from(channel_id),
             response: MessageResponse::Ban,
         };
         let result = db.insert_message_response_config(&message_response).await;
@@ -123,12 +128,17 @@ mod tests {
         assert_eq!(result, Ok(()));
 
         // Message response config should be deleted
-
         let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
         assert_eq!(result, Err(Error::DatabaseEntryNotFound));
 
-        delete_test_db(db).await;
+        // Clean up rows:
+        db.delete_message_response_config(
+            serenity::GuildId::from(guild_id),
+            serenity::ChannelId::from(channel_id),
+        )
+        .await
+        .unwrap();
     }
 }
