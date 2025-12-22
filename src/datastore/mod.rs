@@ -107,7 +107,7 @@ mod tests {
         let channel_id = 87654321;
 
         // Create the message response configuration in db
-        let message_response = MessageResponseConfig {
+        let mut message_response = MessageResponseConfig {
             guild_id: serenity::GuildId::from(guild_id),
             channel_id: serenity::ChannelId::from(channel_id),
             response: MessageResponse::Ban,
@@ -116,6 +116,17 @@ mod tests {
         assert_eq!(result, Ok(()));
 
         // Read the message response for guild and channel id
+        let result = db
+            .get_message_response(message_response.guild_id, message_response.channel_id)
+            .await;
+        assert_eq!(result, Ok(message_response.response));
+
+        // Update the message response for guild and channel id
+        message_response.response = MessageResponse::Kick;
+        let result = db.insert_message_response_config(&message_response).await;
+        assert_eq!(result, Ok(()));
+
+        // Read the updated message response for guild and channel id
         let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;

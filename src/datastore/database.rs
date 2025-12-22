@@ -53,23 +53,14 @@ impl DatastoreWriter for Database {
         &self,
         message_response_config: &MessageResponseConfig,
     ) -> Result<(), Error> {
-        let result = sqlx::query(
-            "INSERT INTO message_responses (guild_id, channel_id, response) VALUES (?, ?, ?)",
-        )
+        // Try inserting into the db
+        let result = sqlx::query(concat!(
+            "INSERT INTO message_responses (guild_id, channel_id, response) VALUES ($1, $2, $3) ",
+            "ON CONFLICT(guild_id, channel_id) DO UPDATE SET response = $3"
+        ))
         .bind(message_response_config.guild_id.get() as i64)
         .bind(message_response_config.channel_id.get() as i64)
         .bind(message_response_config.response as i64)
-        .execute(&self.pool)
-        .await;
-        if result.is_ok() {
-            return Ok(());
-        }
-        let result = sqlx::query(
-            "UPDATE message_responses SET response = ? WHERE guild_id = ? AND channel_id = ?",
-        )
-        .bind(message_response_config.response as i64)
-        .bind(message_response_config.guild_id.get() as i64)
-        .bind(message_response_config.channel_id.get() as i64)
         .execute(&self.pool)
         .await;
         match result {
@@ -119,7 +110,7 @@ mod tests {
         let channel_id = 87654321;
 
         // Create the message response configuration in db
-        let message_response = MessageResponseConfig {
+        let mut message_response = MessageResponseConfig {
             guild_id: serenity::GuildId::from(guild_id),
             channel_id: serenity::ChannelId::from(channel_id),
             response: MessageResponse::Ban,
@@ -128,6 +119,17 @@ mod tests {
         assert_eq!(result, Ok(()));
 
         // Read the message response for guild and channel id
+        let result = db
+            .get_message_response(message_response.guild_id, message_response.channel_id)
+            .await;
+        assert_eq!(result, Ok(message_response.response));
+
+        // Update the message response for guild and channel id
+        message_response.response = MessageResponse::Kick;
+        let result = db.insert_message_response_config(&message_response).await;
+        assert_eq!(result, Ok(()));
+
+        // Read the updated message response for guild and channel id
         let result = db
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
