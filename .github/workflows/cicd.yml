@@ -23,7 +23,7 @@ jobs:
       - name: Validate and set version tag
         shell: bash
         run: |
-          TAG=${{ github.ref_name }}
+          TAG=${GITHUB_REF#refs/*/}
           if [[ -z $TAG ]]; then
             TAG=${{ github.workflow.inputs.tag }}
           fi
