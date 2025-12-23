@@ -1,8 +1,6 @@
 use poise::serenity_prelude::{self as serenity};
 
 use crate::datastore::{
-    cache::DatabaseCache,
-    database::Database,
     errors::Error,
     models::{MessageResponse, MessageResponseConfig},
     traits::{DatastoreReader, DatastoreWriter},
@@ -24,6 +22,11 @@ pub mod prelude {
 pub struct Datastore {
     cache: cache::DatabaseCache,
     database: database::Database,
+}
+
+pub struct DatastoreOptions {
+    pub cache_options: cache::CacheOptions,
+    pub database_options: database::DatabaseOptions,
 }
 
 impl DatastoreReader for Datastore {
@@ -86,8 +89,16 @@ impl DatastoreWriter for Datastore {
 }
 
 impl Datastore {
-    pub fn new(cache: DatabaseCache, database: Database) -> Self {
+    #[cfg(test)]
+    pub fn new(cache: cache::DatabaseCache, database: database::Database) -> Self {
         Self { cache, database }
+    }
+
+    pub async fn new_with_options(options: &DatastoreOptions) -> Self {
+        Self {
+            cache: cache::DatabaseCache::new(&options.cache_options),
+            database: database::Database::new(&options.database_options).await,
+        }
     }
 }
 
@@ -102,7 +113,10 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn create_read_and_delete_message_response_config() {
-        let db = get_test_db().await;
+        let datastore = Datastore::new(
+            /*cache=*/ Default::default(),
+            /*database=*/ get_test_db().await,
+        );
         let guild_id = 12345678;
         let channel_id = 87654321;
 
@@ -112,44 +126,49 @@ mod tests {
             channel_id: serenity::ChannelId::from(channel_id),
             response: MessageResponse::Ban,
         };
-        let result = db.insert_message_response_config(&message_response).await;
+        let result = datastore
+            .insert_message_response_config(&message_response)
+            .await;
         assert_eq!(result, Ok(()));
 
         // Read the message response for guild and channel id
-        let result = db
+        let result = datastore
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
         assert_eq!(result, Ok(message_response.response));
 
         // Update the message response for guild and channel id
         message_response.response = MessageResponse::Kick;
-        let result = db.insert_message_response_config(&message_response).await;
+        let result = datastore
+            .insert_message_response_config(&message_response)
+            .await;
         assert_eq!(result, Ok(()));
 
         // Read the updated message response for guild and channel id
-        let result = db
+        let result = datastore
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
         assert_eq!(result, Ok(message_response.response));
 
         // Delete the message response config
-        let result = db
+        let result = datastore
             .delete_message_response_config(message_response.guild_id, message_response.channel_id)
             .await;
         assert_eq!(result, Ok(()));
 
         // Message response config should be deleted
-        let result = db
+        let result = datastore
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
         assert_eq!(result, Err(Error::DatabaseEntryNotFound));
 
         // Clean up rows:
-        db.delete_message_response_config(
-            serenity::GuildId::from(guild_id),
-            serenity::ChannelId::from(channel_id),
-        )
-        .await
-        .unwrap();
+        datastore
+            .delete_message_response_config(
+                serenity::GuildId::from(guild_id),
+                serenity::ChannelId::from(channel_id),
+            )
+            .await
+            .unwrap();
     }
 }

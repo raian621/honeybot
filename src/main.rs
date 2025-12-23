@@ -11,7 +11,7 @@ use poise::serenity_prelude::{self as serenity, Error};
 
 use crate::{
     context_data::ContextData,
-    datastore::{Datastore, database::Database},
+    datastore::{Datastore, DatastoreOptions, database::DatabaseOptions},
     event_handler::HoneybotEventHandler,
 };
 
@@ -37,11 +37,16 @@ async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
     let intents = serenity::GatewayIntents::non_privileged();
 
-    let database = Database::new(&args.db_path.unwrap_or("honeybot.db".to_string())).await;
-    database
-        .apply_migrations(args.migrations_path.unwrap_or("./migrations".to_string()))
-        .await;
-    let datastore = Arc::new(Datastore::new(Default::default(), database));
+    let datastore = Arc::new(
+        Datastore::new_with_options(&DatastoreOptions {
+            database_options: DatabaseOptions {
+                filename: args.db_path.unwrap_or("honeybot.db".to_string()),
+                migrations_path: args.migrations_path.unwrap_or("./migrations".to_string()),
+            },
+            cache_options: Default::default(),
+        })
+        .await,
+    );
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![commands::listen(), commands::unlisten()],

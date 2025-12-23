@@ -11,10 +11,30 @@ pub struct DatabaseCache {
     subscribed_channel_responses: Cache<(serenity::GuildId, serenity::ChannelId), MessageResponse>,
 }
 
+impl DatabaseCache {
+    pub fn new(options: &CacheOptions) -> Self {
+        Self {
+            subscribed_channel_responses: Cache::new(
+                options.subscribed_channel_responses_max_capacity,
+            ),
+        }
+    }
+}
+
+pub struct CacheOptions {
+    pub subscribed_channel_responses_max_capacity: u64,
+}
+
 impl Default for DatabaseCache {
     fn default() -> Self {
+        Self::new(&Default::default())
+    }
+}
+
+impl Default for CacheOptions {
+    fn default() -> Self {
         Self {
-            subscribed_channel_responses: Cache::new(10_000),
+            subscribed_channel_responses_max_capacity: 10_000,
         }
     }
 }

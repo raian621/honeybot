@@ -13,6 +13,11 @@ pub struct Database {
     pool: sqlx::Pool<Sqlite>,
 }
 
+pub struct DatabaseOptions {
+    pub filename: String,
+    pub migrations_path: String,
+}
+
 impl DatastoreReader for Database {
     async fn get_message_response(
         &self,
@@ -71,25 +76,23 @@ impl DatastoreWriter for Database {
 }
 
 impl Database {
-    pub async fn apply_migrations(&self, migrations_path: String) {
-        Migrator::new(Path::new(&migrations_path))
-            .await
-            .unwrap()
-            .run(&self.pool)
-            .await
-            .unwrap();
-    }
-
-    pub async fn new(filename: &str) -> Self {
-        Self {
+    pub async fn new(options: &DatabaseOptions) -> Self {
+        let db = Self {
             pool: sqlx::Pool::connect_with(
                 SqliteConnectOptions::new()
-                    .filename(filename)
+                    .filename(&options.filename)
                     .create_if_missing(true),
             )
             .await
             .unwrap(),
-        }
+        };
+        Migrator::new(Path::new(&options.migrations_path))
+            .await
+            .unwrap()
+            .run(&db.pool)
+            .await
+            .unwrap();
+        db
     }
 }
 
