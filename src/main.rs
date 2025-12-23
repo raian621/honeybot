@@ -7,11 +7,12 @@ use clap::Parser;
 use std::sync::Arc;
 
 use dotenv::dotenv;
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, Error};
 
 use crate::{
     context_data::ContextData,
     datastore::{Datastore, database::Database},
+    event_handler::HoneybotEventHandler,
 };
 
 #[derive(Parser, Debug)]
@@ -45,7 +46,7 @@ async fn main() {
         .options(poise::FrameworkOptions {
             commands: vec![commands::listen(), commands::unlisten()],
             event_handler: |ctx, event, framework, data| {
-                Box::pin(event_handler::event_handler(ctx, event, framework, data))
+                Box::pin(event_handler(ctx, event, framework, data))
             },
             ..Default::default()
         })
@@ -75,4 +76,20 @@ async fn main() {
         .framework(framework)
         .await;
     client.unwrap().start().await.unwrap();
+}
+
+async fn event_handler(
+    ctx: &serenity::Context,
+    event: &serenity::FullEvent,
+    _framework: poise::FrameworkContext<'_, ContextData, Error>,
+    data: &ContextData,
+) -> Result<(), Error> {
+    event
+        .clone()
+        .dispatch(
+            ctx.clone(),
+            &HoneybotEventHandler::new(data.datastore.clone()),
+        )
+        .await;
+    Ok(())
 }
