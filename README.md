@@ -1,7 +1,11 @@
 # 🍯 Honeybot: Discord Honeypot Bot
 
+[![CI](https://img.shields.io/github/actions/workflow/status/raian621/honeybot/ci.yml?branch=current)](https://github.com/raian621/honeybot/actions/workflows/ci.yml)
+
 Blazingly fast Discord server security bot written in Rust, designed to catch
 and remove spam bot accounts.
+
+This bot communicates with Discord using the [Poise](https://github.com/serenity-rs/poise/) framework.
 
 The logic is simple but quite effective:
 
