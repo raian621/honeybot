@@ -14,8 +14,10 @@ on:
 jobs:
   ci:
     uses: './.github/workflows/ci.yml'
-  cd:
+  version-tag:
     runs-on: ubuntu-latest
+    outputs:
+      version_tag: ${{ env.VERSION_TAG }}
     needs: ci
     steps:
       - uses: actions/checkout@v5
@@ -40,14 +42,18 @@ jobs:
           VERSION_FROM_TAG=$(echo $VERSION_TAG | sed -E 's/v(.+)/\1/g')
           VERSION_FROM_CARGO_TOML=$(sed -n -E 's/^version = \"(.+)\"$/\1/p' \
             Cargo.toml)
-          if [[ $VERSION_FROM_TAG -ne $VERSION_FROM_CARGO_TOML ]]; then
+          if [[ $VERSION_FROM_TAG != $VERSION_FROM_CARGO_TOML ]]; then
             echo "Version from tag ($VERSION_FROM_TAG) does not match" \
               "in Cargo.toml ($VERSION_FROM_CARGO_TOML)"
             exit 1
           fi
 
-      - name: Build and push docker image
-        uses: './.github/workflows/build-docker-image.yml'
-        with:
-          version-tag: ${{ github.env.VERSION_TAG }}
+      - name: Set version_tag output
+        run: echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+
+  deploy-container:
+    needs: version-tag
+    uses: './.github/workflows/build-docker-image.yml'
+    with:
+      version-tag: ${{ needs.version-tag.outputs.version_tag }}
     
