@@ -5,6 +5,12 @@ on:
         type: string
         description: Tag to use for docker image
         required: true
+  workflow_call:
+    inputs:
+      version-tag:
+        type: string
+        description: Tag to use for docker image
+        required: true
 
 jobs:
   build-and-push:
