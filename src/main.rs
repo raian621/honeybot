@@ -29,13 +29,11 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
-
-    dotenv().ok();
+    // Start tracing logger:
     tracing_subscriber::fmt::init();
 
-    let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
-    let intents = serenity::GatewayIntents::non_privileged();
+    dotenv().ok();
+    let args = Args::parse();
 
     let datastore = Arc::new(
         Datastore::new_with_options(&DatastoreOptions {
@@ -47,6 +45,10 @@ async fn main() {
         })
         .await,
     );
+
+    // Poise boilerplate to configure bot:
+    let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
+    let intents = serenity::GatewayIntents::non_privileged();
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![commands::listen(), commands::unlisten()],
