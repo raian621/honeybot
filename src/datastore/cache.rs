@@ -55,7 +55,18 @@ impl DatastoreReader for DatabaseCache {
             .await
         {
             Some(response) => Ok(response),
-            None => Err(Error::CacheEntryNotFound),
+            None => {
+                // Insert dummy message response config into the cache to avoid querying the
+                // database for all messages in channels that the bot isn't configured to listen to.
+                let _ = self
+                    .insert_message_response_config(&MessageResponseConfig {
+                        guild_id,
+                        channel_id,
+                        response: MessageResponse::Nothing,
+                    })
+                    .await;
+                return Ok(MessageResponse::Nothing);
+            }
         }
     }
 

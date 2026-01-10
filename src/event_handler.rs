@@ -24,11 +24,17 @@ impl EventHandler for HoneybotEventHandler {
 
         let guild_id = new_message.guild_id.unwrap();
         let channel_id = new_message.channel_id;
-        let response = self
+        let response = match self
             .datastore
             .get_message_response(guild_id, channel_id)
             .await
-            .unwrap_or(MessageResponse::Nothing);
+        {
+            Ok(response) => response,
+            Err(why) => {
+                tracing::error!("Error retrieving configured response from database: {why:?}");
+                return;
+            }
+        };
 
         // I feel like this is not the best way to get the guild...
         let guild = (*new_message.guild(&ctx.cache).unwrap()).clone();
@@ -55,7 +61,7 @@ impl EventHandler for HoneybotEventHandler {
                 .unwrap_or_else(|err| {
                     tracing::error!("Error banning user: {err:?}");
                 }),
-            MessageResponse::Nothing => (),
+            MessageResponse::Nothing => return,
         };
 
         if let Ok(logging_channel_id) = self.datastore.get_logging_channel(guild_id).await {
