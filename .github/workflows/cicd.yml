@@ -41,7 +41,9 @@ jobs:
 
       - name: Set version_tag output
         id: set-output
-        run: echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+        run: |
+          echo "$VERSION_TAG"
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
   release:
     uses: './.github/workflows/release.yml'
