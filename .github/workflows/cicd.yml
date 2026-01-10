@@ -11,7 +11,7 @@ jobs:
     name: Read and Validate Version
     runs-on: ubuntu-latest
     outputs:
-      version_tag: ${{ env.VERSION_TAG }}
+      version_tag: ${{ steps.set-output.outputs.version_tag }}
     needs: ci
     steps:
       - uses: actions/checkout@v5
@@ -40,6 +40,7 @@ jobs:
           fi
 
       - name: Set version_tag output
+        id: set-output
         run: echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
   release:
