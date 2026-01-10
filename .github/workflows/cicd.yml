@@ -46,4 +46,4 @@ jobs:
     uses: './.github/workflows/release.yml'
     needs: version-tag
     with:
-      version_tag: ${{ needs.version-tag.version-tag }}
+      version_tag: ${{ needs.version-tag.version_tag }}
