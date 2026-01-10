@@ -58,7 +58,7 @@ pub async fn listen(
             event!(Level::WARN, "Error listening to channel: {why:?}");
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("Error listening to channel >#{channel_id}>"))
+                    .content(format!("Error listening to channel <#{channel_id}>"))
                     .ephemeral(true),
             )
             .await?;
@@ -91,11 +91,54 @@ pub async fn unlisten(
             event!(Level::WARN, "Error unlistening to channel: {why:?}");
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("Error unlistening to channel >#{channel_id}>"))
+                    .content(format!("Error unlistening to channel <#{channel_id}>"))
                     .ephemeral(true),
             )
             .await?;
         }
     }
+    Ok(())
+}
+
+#[poise::command(slash_command, default_member_permissions = "ADMINISTRATOR")]
+pub async fn logging_channel(
+    ctx: Context<'_, context_data::ContextData, Error>,
+    #[description = "Channel to log ban / kick messages to"] channel: serenity::Channel,
+) -> Result<(), Error> {
+    let guild_id = ctx
+        .guild_id()
+        .expect("the bot should only be run in a guild");
+    let channel_id = channel.id();
+    let result = ctx
+        .data()
+        .datastore
+        .insert_logging_channel(guild_id, channel_id)
+        .await;
+    match result {
+        Ok(_) => {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!(
+                        "Bans / kicks from this bot will be logged in channel <#{channel_id}>"
+                    ))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+        Err(why) => {
+            event!(
+                Level::WARN,
+                "Error inserting logging channel into datastore: {why:?}"
+            );
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!(
+                        "Error configuring logging for channel <#{channel_id}>"
+                    ))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+    };
     Ok(())
 }

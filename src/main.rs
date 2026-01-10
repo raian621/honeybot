@@ -51,7 +51,11 @@ async fn main() {
     let intents = serenity::GatewayIntents::non_privileged();
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::listen(), commands::unlisten()],
+            commands: vec![
+                commands::listen(),
+                commands::unlisten(),
+                commands::logging_channel(),
+            ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
