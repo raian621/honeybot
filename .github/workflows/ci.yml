@@ -3,14 +3,16 @@ on:
     branches:
       - main
     paths:
-      - '*.rs'
-      - '*.sql'
+      - '**/*.rs'
+      - '**/*.sql'
     tags-ignore:
       - 'v*.*.*'
   pull_request:
+    branches:
+      - main
     paths:
-      - '*.rs'
-      - '*.sql'
+      - '**/*.rs'
+      - '**/*.sql'
   workflow_dispatch:
   workflow_call:
 
