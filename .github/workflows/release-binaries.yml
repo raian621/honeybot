@@ -75,6 +75,11 @@ jobs:
         toolchain: ${{ matrix.rust }}
         target: ${{ matrix.target }}
 
+    - name: Install Cross
+      shell: bash
+      run: |
+        cargo install cross
+
     - name: Set target variables
       shell: bash
       run: |
