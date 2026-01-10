@@ -9,6 +9,7 @@ use crate::datastore::{
 
 pub struct DatabaseCache {
     subscribed_channel_responses: Cache<(serenity::GuildId, serenity::ChannelId), MessageResponse>,
+    logging_channels: Cache<serenity::GuildId, serenity::ChannelId>,
 }
 
 impl DatabaseCache {
@@ -17,12 +18,14 @@ impl DatabaseCache {
             subscribed_channel_responses: Cache::new(
                 options.subscribed_channel_responses_max_capacity,
             ),
+            logging_channels: Cache::new(options.logging_channels_max_capacity),
         }
     }
 }
 
 pub struct CacheOptions {
     pub subscribed_channel_responses_max_capacity: u64,
+    pub logging_channels_max_capacity: u64,
 }
 
 impl Default for DatabaseCache {
@@ -35,6 +38,7 @@ impl Default for CacheOptions {
     fn default() -> Self {
         Self {
             subscribed_channel_responses_max_capacity: 10_000,
+            logging_channels_max_capacity: 10_000,
         }
     }
 }
@@ -50,6 +54,16 @@ impl DatastoreReader for DatabaseCache {
             .get(&(guild_id, channel_id))
             .await
         {
+            Some(response) => Ok(response),
+            None => Err(Error::CacheEntryNotFound),
+        }
+    }
+
+    async fn get_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+    ) -> Result<serenity::ChannelId, Error> {
+        match self.logging_channels.get(&guild_id).await {
             Some(response) => Ok(response),
             None => Err(Error::CacheEntryNotFound),
         }
@@ -81,6 +95,20 @@ impl DatastoreWriter for DatabaseCache {
         self.subscribed_channel_responses
             .remove(&(guild_id, channel_id))
             .await;
+        Ok(())
+    }
+
+    async fn insert_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Result<(), Error> {
+        self.logging_channels.insert(guild_id, channel_id).await;
+        Ok(())
+    }
+
+    async fn delete_logging_channel(&self, guild_id: serenity::GuildId) -> Result<(), Error> {
+        self.logging_channels.remove(&guild_id).await;
         Ok(())
     }
 }

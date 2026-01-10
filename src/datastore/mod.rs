@@ -59,6 +59,27 @@ impl DatastoreReader for Datastore {
 
         Ok(response)
     }
+
+    async fn get_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+    ) -> Result<serenity::ChannelId, Error> {
+        let result = self.cache.get_logging_channel(guild_id).await;
+        if result.is_ok() {
+            return result;
+        }
+
+        // Read from database after cache miss
+        let channel_id = self.database.get_logging_channel(guild_id).await?;
+
+        // Ignore cache insertion errors
+        let _ = self
+            .cache
+            .insert_logging_channel(guild_id, channel_id)
+            .await;
+
+        Ok(channel_id)
+    }
 }
 
 impl DatastoreWriter for Datastore {
@@ -85,6 +106,24 @@ impl DatastoreWriter for Datastore {
         self.cache
             .delete_message_response_config(guild_id, channel_id)
             .await
+    }
+
+    async fn insert_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Result<(), Error> {
+        self.database
+            .insert_logging_channel(guild_id, channel_id)
+            .await?;
+        self.cache
+            .insert_logging_channel(guild_id, channel_id)
+            .await
+    }
+
+    async fn delete_logging_channel(&self, guild_id: serenity::GuildId) -> Result<(), Error> {
+        self.database.delete_logging_channel(guild_id).await?;
+        self.cache.delete_logging_channel(guild_id).await
     }
 }
 
@@ -170,5 +209,35 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_read_and_delete_logging_channel() {
+        let datastore = Datastore::new(
+            /* cache= */ Default::default(),
+            /* database= */ get_test_db().await,
+        );
+
+        let guild_id = serenity::GuildId::new(12345678);
+        let channel_id = serenity::ChannelId::new(87654321);
+        let result = datastore.insert_logging_channel(guild_id, channel_id).await;
+        assert_eq!(result, Ok(()));
+
+        let result = datastore.get_logging_channel(guild_id).await;
+        assert_eq!(result, Ok(channel_id));
+
+        let channel_id = serenity::ChannelId::new(01234567);
+        let result = datastore.insert_logging_channel(guild_id, channel_id).await;
+        assert_eq!(result, Ok(()));
+
+        let result = datastore.get_logging_channel(guild_id).await;
+        assert_eq!(result, Ok(channel_id));
+
+        let result = datastore.delete_logging_channel(guild_id).await;
+        assert_eq!(result, Ok(()));
+
+        let result = datastore.get_logging_channel(guild_id).await;
+        assert_eq!(result, Err(Error::DatabaseEntryNotFound));
     }
 }

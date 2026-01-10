@@ -11,6 +11,11 @@ pub trait DatastoreReader {
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
     ) -> Result<MessageResponse, Error>;
+
+    async fn get_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+    ) -> Result<serenity::ChannelId, Error>;
 }
 
 pub trait DatastoreWriter {
@@ -24,4 +29,15 @@ pub trait DatastoreWriter {
         guild_id: serenity::GuildId,
         channel_id: serenity::ChannelId,
     ) -> Result<(), Error>;
+
+    async fn insert_logging_channel(
+        &self,
+        guild_id: serenity::GuildId,
+        channel_id: serenity::ChannelId,
+    ) -> Result<(), Error>;
+
+    // Might add a command to use this method later. As of this commit, this method is only used in
+    // tests.
+    #[allow(dead_code)]
+    async fn delete_logging_channel(&self, guild_id: serenity::GuildId) -> Result<(), Error>;
 }
