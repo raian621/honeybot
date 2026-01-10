@@ -195,11 +195,12 @@ mod tests {
             .await;
         assert_eq!(result, Ok(()));
 
-        // Message response config should be deleted
+        // Message response config should be deleted, but a dummy "Nothing" config should be
+        // returned from the cache
         let result = datastore
             .get_message_response(message_response.guild_id, message_response.channel_id)
             .await;
-        assert_eq!(result, Err(Error::DatabaseEntryNotFound));
+        assert_eq!(result, Ok(MessageResponse::Nothing));
 
         // Clean up rows:
         datastore

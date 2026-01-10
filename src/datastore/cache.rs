@@ -65,7 +65,7 @@ impl DatastoreReader for DatabaseCache {
                         response: MessageResponse::Nothing,
                     })
                     .await;
-                return Ok(MessageResponse::Nothing);
+                Ok(MessageResponse::Nothing)
             }
         }
     }
