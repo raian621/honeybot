@@ -114,7 +114,7 @@ jobs:
       run: |
         mkdir -p "$ARCHIVE"/
         cp "$BIN" "$ARCHIVE"/
-        cp {README.md,LICENSE,migrations} "$ARCHIVE"/
+        cp -r {README.md,LICENSE,migrations} "$ARCHIVE"/
 
     - name: Build archive (Unix)
       shell: bash
