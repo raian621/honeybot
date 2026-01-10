@@ -6,7 +6,9 @@ on:
 jobs:
   ci:
     uses: './.github/workflows/ci.yml'
+
   version-tag:
+    name: Read and Validate Version
     runs-on: ubuntu-latest
     outputs:
       version_tag: ${{ env.VERSION_TAG }}
@@ -40,8 +42,8 @@ jobs:
       - name: Set version_tag output
         run: echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
-  deploy-container:
+  release:
+    uses: './.github/workflows/release.yml'
     needs: version-tag
-    uses: './.github/workflows/build-docker-image.yml'
     with:
-      version-tag: ${{ needs.version-tag.outputs.version_tag }}
+      version_tag: ${{ needs.version-tag.version-tag }}

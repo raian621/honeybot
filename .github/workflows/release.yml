@@ -1,0 +1,33 @@
+on:
+  workflow_call:
+    inputs:
+      version_tag:
+        type: string
+
+jobs:
+  create-release:
+    name: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ inputs.version_tag }} \
+            --draft --verify-tag --title ${{ inputs.version_tag }}
+
+  release-binaries:
+    name: Release Binaries
+    needs:
+      - create-release
+    uses: './.github/workflows/release-binaries.yml'
+    with:
+      version_tag: ${{ inputs.version_tag }}
+
+  release-container:
+    needs:
+      - create-release
+    uses: './.github/workflows/release-docker-image.yml'
+    with:
+      version_tag: ${{ inputs.version_tag }}

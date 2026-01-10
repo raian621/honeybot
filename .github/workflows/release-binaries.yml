@@ -1,0 +1,127 @@
+name: Release Binaries
+
+on:
+  workflow_call:
+    inputs:
+      version_tag:
+        type: string
+
+jobs:
+  build-release:
+    name: build-release
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO: cargo
+      TARGET_DIR: ./target
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - build: linux
+          os: ubuntu-latest
+          rust: nightly
+          target: x86_64-unknown-linux-musl
+          strip: x86_64-linux-musl-strip
+        - build: stable-x86
+          os: ubuntu-latest
+          rust: stable
+          target: i686-unknown-linux-gnu
+          strip: x86_64-linux-gnu-strip
+          qemu: i386
+        - build: stable-aarch64
+          os: ubuntu-latest
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+          strip: aarch64-linux-gnu-strip
+          qemu: qemu-aarch64
+        - build: stable-arm-gnueabihf
+          os: ubuntu-latest
+          rust: stable
+          target: armv7-unknown-linux-gnueabihf
+          strip: arm-linux-gnueabihf-strip
+          qemu: qemu-arm
+        - build: stable-arm-musleabihf
+          os: ubuntu-latest
+          rust: stable
+          target: armv7-unknown-linux-musleabihf
+          strip: arm-linux-musleabihf-strip
+          qemu: qemu-arm
+        - build: stable-arm-musleabi
+          os: ubuntu-latest
+          rust: stable
+          target: armv7-unknown-linux-musleabi
+          strip: arm-linux-musleabi-strip
+          qemu: qemu-arm
+        - build: stable-powerpc64
+          os: ubuntu-latest
+          rust: stable
+          target: powerpc64-unknown-linux-gnu
+          strip: powerpc64-linux-gnu-strip
+          qemu: qemu-ppc64
+        - build: stable-s390x
+          os: ubuntu-latest
+          rust: stable
+          target: s390x-unknown-linux-gnu
+          strip: s390x-linux-gnu-strip
+          qemu: qemu-s390x
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        target: ${{ matrix.target }}
+
+    - name: Set target variables
+      shell: bash
+      run: |
+        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+    - name: Build release binary
+      shell: bash
+      run: |
+        cargo build --verbose --release ${{ env.TARGET_FLAGS }}
+        bin="target/${{ matrix.target }}/release/honeybot"
+        echo "BIN=$bin" >> $GITHUB_ENV
+
+    - name: Strip release binary (cross)
+      if: env.CARGO == 'cross'
+      shell: bash
+      run: |
+        docker run --rm -v \
+          "$PWD/target:/target:Z" \
+          "ghcr.io/cross-rs/${{ matrix.target }}:main" \
+          "${{ matrix.strip }}" \
+          "/$BIN"
+
+    - name: Determine archive name
+      shell: bash
+      run: |
+        version="${{ inputs.version_tag }}"
+        echo "ARCHIVE=honeybot-$version-${{ matrix.target }}" >> $GITHUB_ENV
+
+    - name: Creating directory for archive
+      shell: bash
+      run: |
+        mkdir -p "$ARCHIVE"/
+        cp "$BIN" "$ARCHIVE"/
+        cp {README.md,LICENSE} "$ARCHIVE"/
+
+    - name: Build archive (Unix)
+      shell: bash
+      run: |
+        tar czf "$ARCHIVE.tar.gz" "$ARCHIVE"
+        shasum -a 256 "$ARCHIVE.tar.gz" > "$ARCHIVE.tar.gz.sha256"
+        echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
+        echo "ASSET_SUM=$ARCHIVE.tar.gz.sha256" >> $GITHUB_ENV
+
+    - name: Upload release archive
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        gh release upload "${{ inputs.version_tag }}" ${{ env.ASSET }} ${{ env.ASSET_SUM }}

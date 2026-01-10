@@ -1,13 +1,13 @@
 on:
   workflow_dispatch:
     inputs:
-      version-tag:
+      version_tag:
         type: string
         description: Tag to use for docker image
         required: true
   workflow_call:
     inputs:
-      version-tag:
+      version_tag:
         type: string
         description: Tag to use for docker image
         required: true
@@ -32,5 +32,5 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/honeybot:${{ inputs.version-tag }}
+          tags: ghcr.io/${{ github.repository_owner }}/honeybot:${{ inputs.version_tag }}
 
