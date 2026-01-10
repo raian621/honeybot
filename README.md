@@ -58,7 +58,7 @@ Stop the bot from listening to a channel that it was previously listening to.
 
 - `channel_id`: The ID of the channel you want the bot not to listen to.
 
-### `logging_channel`
+### `logging_channel <channel_id>`
 
 Tell the bot where to log actions it has taken on users.
 
