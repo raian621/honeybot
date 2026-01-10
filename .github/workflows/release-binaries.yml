@@ -84,7 +84,7 @@ jobs:
     - name: Build release binary
       shell: bash
       run: |
-        cargo build --verbose --release ${{ env.TARGET_FLAGS }}
+        cross build --verbose --release ${{ env.TARGET_FLAGS }}
         bin="target/${{ matrix.target }}/release/honeybot"
         echo "BIN=$bin" >> $GITHUB_ENV
 
