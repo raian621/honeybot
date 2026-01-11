@@ -65,3 +65,14 @@ Tell the bot where to log actions it has taken on users.
 **Arguments**:
 
 - `channel_id`: The ID of the channel the bot will log actions to.
+
+## ⚙️ Environment Variables
+
+- `DISCORD_TOKEN` (Required): Discord bot token from Developer Portal
+- `GUILD_ID` (Optional): Server ID for command registration (else global)
+
+**Example .env file:**
+```env
+DISCORD_TOKEN=your_token_here
+GUILD_ID=123456789012345678
+```
