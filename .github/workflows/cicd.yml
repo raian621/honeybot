@@ -1,3 +1,5 @@
+name: CICD Pipeline for Releases
+
 on:
   push:
     tags:
@@ -5,6 +7,7 @@ on:
 
 jobs:
   ci:
+    name: Run CI Checks
     uses: './.github/workflows/ci.yml'
 
   version-tag:
@@ -16,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Validate and set version tag
+      - name: Validate and Set Version Tag
         shell: bash
         run: |
           TAG=${GITHUB_REF#refs/*/}
@@ -27,7 +30,7 @@ jobs:
             exit 1
           fi
       
-      - name: Check version in Cargo.toml
+      - name: Check Version in Cargo.toml
         shell: bash
         run: |
           VERSION_FROM_TAG=$(echo $VERSION_TAG | sed -E 's/v(.+)/\1/g')
@@ -39,13 +42,14 @@ jobs:
             exit 1
           fi
 
-      - name: Set version_tag output
+      - name: Set `version_tag` Output
         id: set-output
         run: |
           echo "$VERSION_TAG"
           echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
   release:
+    name: Execute Release
     uses: './.github/workflows/release.yml'
     needs: version-tag
     with:

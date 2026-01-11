@@ -1,4 +1,4 @@
-name: Release Binaries
+name: Binary Release Builder
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-release:
-    name: build-release
+    name: Cross-Platform Build
     runs-on: ${{ matrix.os }}
     env:
       CARGO: cargo
@@ -66,7 +66,7 @@ jobs:
           qemu: qemu-s390x
 
     steps:
-    - name: Checkout repository
+    - name: Checkout Repository
       uses: actions/checkout@v6
 
     - name: Install Rust
@@ -80,20 +80,20 @@ jobs:
       run: |
         cargo install cross
 
-    - name: Set target variables
+    - name: Set Target Variables
       shell: bash
       run: |
         echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
-    - name: Build release binary
+    - name: Build Release Binary
       shell: bash
       run: |
         cross build --verbose --release ${{ env.TARGET_FLAGS }}
         bin="target/${{ matrix.target }}/release/honeybot"
         echo "BIN=$bin" >> $GITHUB_ENV
 
-    - name: Strip release binary (cross)
+    - name: Strip Release Binary with Cross
       if: env.CARGO == 'cross'
       shell: bash
       run: |
@@ -103,20 +103,20 @@ jobs:
           "${{ matrix.strip }}" \
           "/$BIN"
 
-    - name: Determine archive name
+    - name: Determine Archive Name
       shell: bash
       run: |
         version="${{ inputs.version_tag }}"
         echo "ARCHIVE=honeybot-$version-${{ matrix.target }}" >> $GITHUB_ENV
 
-    - name: Creating directory for archive
+    - name: Creating Directory for Archive
       shell: bash
       run: |
         mkdir -p "$ARCHIVE"/
         cp "$BIN" "$ARCHIVE"/
         cp -r {README.md,LICENSE,migrations} "$ARCHIVE"/
 
-    - name: Build archive (Unix)
+    - name: Build Archive
       shell: bash
       run: |
         tar czf "$ARCHIVE.tar.gz" "$ARCHIVE"
@@ -124,7 +124,7 @@ jobs:
         echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
         echo "ASSET_SUM=$ARCHIVE.tar.gz.sha256" >> $GITHUB_ENV
 
-    - name: Upload release archive
+    - name: Upload Release Archive
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       shell: bash

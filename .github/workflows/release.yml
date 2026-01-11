@@ -1,3 +1,5 @@
+name: Release Orchestration
+
 on:
   workflow_call:
     inputs:
@@ -6,7 +8,7 @@ on:
 
 jobs:
   create-release:
-    name: create-release
+    name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +20,7 @@ jobs:
             --draft --verify-tag --title ${{ inputs.version_tag }}
 
   release-binaries:
-    name: Release Binaries
+    name: Build Release Binaries
     needs:
       - create-release
     uses: './.github/workflows/release-binaries.yml'
@@ -26,6 +28,7 @@ jobs:
       version_tag: ${{ inputs.version_tag }}
 
   release-container:
+    name: Build Docker Image
     needs:
       - create-release
     uses: './.github/workflows/release-docker-image.yml'
