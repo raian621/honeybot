@@ -39,6 +39,7 @@ impl EventHandler for HoneybotEventHandler {
         // I feel like this is not the best way to get the guild...
         let guild = (*new_message.guild(&ctx.cache).unwrap()).clone();
         let user_id = new_message.author.id;
+        let mut action_succeeded = true;
 
         match response {
             MessageResponse::Respond => {
@@ -46,6 +47,7 @@ impl EventHandler for HoneybotEventHandler {
                     .reply(&ctx, "Are you lost? You shouldn't be in this channel...")
                     .await;
                 if let Err(why) = result {
+                    action_succeeded = false;
                     tracing::error!("Error responding to user: {why:?}");
                 }
             }
@@ -53,12 +55,14 @@ impl EventHandler for HoneybotEventHandler {
                 .kick_with_reason(&ctx, user_id, "posted in a honeypot channel")
                 .await
                 .unwrap_or_else(|err| {
+                    action_succeeded = false;
                     tracing::error!("Error kicking user: {err:?}");
                 }),
             MessageResponse::Ban => guild
                 .ban_with_reason(&ctx, user_id, 7, "posted in a honeypot channel")
                 .await
                 .unwrap_or_else(|err| {
+                    action_succeeded = false;
                     tracing::error!("Error banning user: {err:?}");
                 }),
             MessageResponse::Nothing => return,
@@ -70,7 +74,14 @@ impl EventHandler for HoneybotEventHandler {
                 tracing::error!("Logging channel `{logging_channel_id}` not found!");
                 return;
             }
-            log_action_in_channel(&ctx, response, user_id, logging_channel.unwrap()).await;
+            log_action_in_channel(
+                &ctx,
+                response,
+                action_succeeded,
+                user_id,
+                logging_channel.unwrap(),
+            )
+            .await;
         } else {
             tracing::warn!("Logging channel not found for guild `{guild_id}`");
         }
@@ -80,19 +91,38 @@ impl EventHandler for HoneybotEventHandler {
 async fn log_action_in_channel(
     ctx: &serenity::Context,
     action: MessageResponse,
+    succeeded: bool,
     user_id: serenity::UserId,
     logging_channel: &serenity::GuildChannel,
 ) {
     let action_str = match action {
-        MessageResponse::Ban => "Banned",
-        MessageResponse::Kick => "Kicked",
+        MessageResponse::Ban => {
+            if succeeded {
+                "Banned"
+            } else {
+                "Failed to ban"
+            }
+        }
+        MessageResponse::Kick => {
+            if succeeded {
+                "Kicked"
+            } else {
+                "Failed to kick"
+            }
+        }
         MessageResponse::Nothing => "Nothing done to",
-        MessageResponse::Respond => "Warned",
+        MessageResponse::Respond => {
+            if succeeded {
+                "Warned"
+            } else {
+                "Failed to warn"
+            }
+        }
     };
     let result = logging_channel
         .say(
             ctx,
-            format!("{action_str} user <@{user_id}> for posting in the honeypot channel.",),
+            format!("{action_str} user <@{user_id}> for posting in the honeypot channel."),
         )
         .await;
     match result {
